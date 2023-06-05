@@ -27,14 +27,20 @@ Ya know that whole dont repeat yourself thing.... yeah that went out the window.
 
 def file_dialog():
     root = Tk()
+    root.attributes('-topmost', True)
     root.withdraw()
+    root.lift()
+    root.focus_force()
     directory = Path(filedialog.askdirectory())
     return directory
 
 
 def open_dialog():
     root = Tk()
+    root.attributes('-topmost', True)
     root.withdraw()
+    root.lift()
+    root.focus_force()
     file_save_path = Path(filedialog.askopenfilename())
     return file_save_path if file_save_path else None
 
