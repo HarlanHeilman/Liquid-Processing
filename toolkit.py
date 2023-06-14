@@ -27,7 +27,7 @@ Ya know that whole dont repeat yourself thing.... yeah that went out the window.
 
 def file_dialog():
     root = Tk()
-    root.attributes('-topmost', True)
+    root.attributes("-topmost", True)
     root.withdraw()
     root.lift()
     root.focus_force()
@@ -37,7 +37,7 @@ def file_dialog():
 
 def open_dialog():
     root = Tk()
-    root.attributes('-topmost', True)
+    root.attributes("-topmost", True)
     root.withdraw()
     root.lift()
     root.focus_force()
@@ -45,15 +45,17 @@ def open_dialog():
     return file_save_path if file_save_path else None
 
 
-def fits_copy_rename(file_path: Path | str, rename: str):
-    dest_path, ext = (
-        ".".join(str(file_path).split(".")[:-1]),
-        str(file_path).split(".")[-1],
-    )
-    dest_file_name = Path(f"{dest_path}{rename}.{ext}")
-    copy2(Path(file_path), dest_file_name)
+def fits_copy_rename(file_path: str):
+    current_path = Path("\\".join(file_path.split("\\")[:-1]))
+    file = file_path.split("\\")[-1]
 
-    return dest_file_name
+    dest_path = current_path / "CCD"
+    path_factory(dest_path)
+    dest_file = dest_path / file
+
+    copy2(Path(file_path), dest_file)
+
+    return dest_file
 
 
 """
@@ -111,21 +113,23 @@ class FitsLoader:
         self.averaged_dark = dark_images.mean(axis=0, dtype=np.uint16)
 
     def _write_merged_file(self):
-        """
-        In general this whole thing is really bad practice if something goes wrong the files are never closed.... NOT GOOD
-        """
-
-        dark_copy_to = fits_copy_rename(self.file_list[0], rename="Dark_Average")
-        bright_copy_to = fits_copy_rename(self.file_list[0], rename="Bright_Average")
+        dark_copy_to = fits_copy_rename(self.file_list[0])
+        bright_copy_to = fits_copy_rename(self.file_list[1])
 
         dark_fits = copy.deepcopy(fits.open(self.file_list[0]))
         bright_fits = copy.deepcopy(fits.open(self.file_list[1]))
+        try:
+            dark_fits[2].data = self.averaged_dark  # type: ignore
+            bright_fits[2].data = self.averaged_bright  # type: ignore
 
-        dark_fits[2].data = self.averaged_dark  # type: ignore
-        bright_fits[2].data = self.averaged_bright  # type: ignore
+            dark_fits.writeto(dark_copy_to, overwrite=True)
+            bright_fits.writeto(bright_copy_to, overwrite=True)
+        except:
+            dark_fits.close()
+            bright_fits.close()
 
-        dark_fits.writeto(dark_copy_to, overwrite=True)
-        bright_fits.writeto(bright_copy_to, overwrite=True)
+    def _generate_new_header(self):
+        raise NotImplementedError()
 
     def im_show(self) -> None:
         dim = round(self.energies.size / 2, 0)
@@ -357,7 +361,6 @@ def processing(directory: Path, filter="Repeat") -> dict:
 
     sorted_path = directory.parent / "Sorted"
     samples = list(sorted_path.iterdir())
-    liquid_data = {}
 
     for sample in samples:
         energies = list(sample.iterdir())
@@ -368,7 +371,7 @@ def processing(directory: Path, filter="Repeat") -> dict:
     return liquid_data
 
 
-# if __name__ == "__main__":
-#     directory = file_dialog()
-#     liquid_data = processing(directory)
-#     A = 1
+if __name__ == "__main__":
+    directory = file_dialog()
+    liquid_data = processing(directory)
+    A = 1
